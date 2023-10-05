@@ -5,8 +5,8 @@
 //  Created by Andrew Althage on 10/5/23.
 //
 
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 @main
 struct ObjectClassifierApp: App {

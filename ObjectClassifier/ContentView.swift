@@ -6,52 +6,88 @@
 //
 
 import SwiftUI
-import SwiftData
-
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
+    @State var isPresenting: Bool = false
+    @State var uiImage: UIImage?
+    @State var sourceType: UIImagePickerController.SourceType = .photoLibrary
+
+    @ObservedObject var classifier = ImageClassifier()
 
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
+        VStack {
+            HStack {
+                Button(action: {
+                    isPresenting = true
+                    sourceType = .photoLibrary
+                }, label: {
+                    Image(systemName: "photo")
+                        .foregroundColor(.white)
+                }).buttonStyle(.borderedProminent)
+
+                Button(action: {
+                    isPresenting = true
+                    sourceType = .camera
+                }, label: {
+                    Image(systemName: "camera")
+                        .foregroundColor(.white)
+                }).buttonStyle(.borderedProminent)
+            }
+            .font(.headline)
+            .foregroundColor(.blue)
+
+            Rectangle()
+                .strokeBorder()
+                .foregroundColor(.yellow)
+                .overlay(
+                    Group {
+                        if uiImage != nil {
+                            Image(uiImage: uiImage!)
+                                .resizable()
+                                .scaledToFit()
+                        }
+                    }.padding(.horizontal, 8)
+                )
+
+            VStack {
+                Button(action: {
+                    if uiImage != nil {
+                        classifier.detect(uiImage: uiImage!)
+                    }
+                }) {
+                    Image(systemName: "bolt.fill")
+                        .foregroundColor(.orange)
+                        .font(.title)
+                }
+
+                Group {
+                    if let imageClass = classifier.imageClass {
+                        HStack {
+                            Text("Image categories:")
+                                .font(.caption)
+                            Text(imageClass)
+                                .bold()
+                        }
+                    } else {
+                        HStack {
+                            Text("Image categories: NA")
+                                .font(.caption)
+                        }.font(.caption)
                     }
                 }
-                .onDelete(perform: deleteItems)
+                .font(.subheadline)
+                .padding()
             }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
+        }
+
+        .sheet(isPresented: $isPresenting) {
+            ImagePicker(uiImage: $uiImage, isPresenting: $isPresenting, sourceType: $sourceType)
+                .onDisappear {
+                    if uiImage != nil {
+                        classifier.detect(uiImage: uiImage!)
                     }
                 }
-            }
-        } detail: {
-            Text("Select an item")
         }
-    }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
-            }
-        }
+        .padding()
     }
 }
 
